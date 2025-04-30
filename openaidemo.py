@@ -1,11 +1,6 @@
 import asyncio
 import os
-import shutil
-import subprocess
-import time
-from typing import Any
-
-from agents import Agent, Runner, gen_trace_id, trace
+from agents import Agent, Runner
 from agents.mcp import MCPServer, MCPServerSse
 from agents.model_settings import ModelSettings
 from dotenv import load_dotenv
@@ -13,13 +8,23 @@ from dotenv import load_dotenv
 #load .env
 load_dotenv()
 
+# run fastmcp run mcp-server-openai.py:mcp --transport sse
+#before running this, run the mcp-server-openai.py file
 
-
-async def run(mcp_server: MCPServer):
+async def main():
+    
+    server = MCPServerSse(
+        name="SSE Python Server",
+        params={
+            "url": "http://localhost:8000/sse",
+        },
+    )
+    await server.connect()  # Initialize the server connection
+    
     agent = Agent(
         name="Assistant",
         instructions="Use the tools to answer the questions.",
-        mcp_servers=[mcp_server],
+        mcp_servers=[server],
         model_settings=ModelSettings(tool_choice="required"),
     )
 
@@ -41,48 +46,9 @@ async def run(mcp_server: MCPServer):
     result = await Runner.run(starting_agent=agent, input=message)
     print(result.final_output)
 
-
-async def main():
-    async with MCPServerSse(
-        name="SSE Python Server",
-        params={
-            "url": "http://localhost:8000/sse",
-        },
-    ) as server:
-        trace_id = gen_trace_id()
-        with trace(workflow_name="SSE Example", trace_id=trace_id):
-            print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
-            await run(server)
-
+    await server.cleanup()  # Clean up the server connection
 
 if __name__ == "__main__":
-    # Let's make sure the user has uv installed
-    if not shutil.which("uv"):
-        raise RuntimeError(
-            "uv is not installed. Please install it: https://docs.astral.sh/uv/getting-started/installation/"
-        )
 
-    # We'll run the SSE server in a subprocess. Usually this would be a remote server, but for this
-    # demo, we'll run it locally at http://localhost:8000/sse
-    process: subprocess.Popen[Any] | None = None
-    try:
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-        server_file = os.path.join(this_dir, "mcp-server-openai.py")
-
-        print("Starting SSE server at http://localhost:8000/sse ...")
-
-        # Run `uv run server.py` to start the SSE server
-        process = subprocess.Popen(["uv", "run", server_file])
-        # Give it 3 seconds to start
-        time.sleep(3)
-
-        print("SSE server started. Running example...\n\n")
-    except Exception as e:
-        print(f"Error starting SSE server: {e}")
-        exit(1)
-
-    try:
-        asyncio.run(main())
-    finally:
-        if process:
-            process.terminate()
+    asyncio.run(main())
+ 

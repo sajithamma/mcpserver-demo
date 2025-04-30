@@ -31,3 +31,5 @@ def get_current_weather(city: str) -> str:
 
 if __name__ == "__main__":
     mcp.run(transport="sse")
+
+# run using  fastmcp run mcp-server-openai.py:mcp --transport sse 
