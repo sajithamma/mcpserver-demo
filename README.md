@@ -1,4 +1,4 @@
-# MCP Days
+# MCP Server Demo
 
 A demonstration project showcasing the FastMCP framework for building and interacting with MCP (Model Control Protocol) services.
 
